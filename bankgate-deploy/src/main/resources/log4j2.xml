@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<configuration packages="org.apache.logging.log4j.core.pattern">
+	<properties>
+		<!-- 文件输出格式 -->
+		<property name="consolePattern">%d{yyyy-MM-dd HH:mm:ss.SSS} |-%-5level [%thread] %c %L -| %msg%n</property>
+	</properties>
+
+	<appenders>
+		<RollingRandomAccessFile name="bankgateError" immediateFlush="false" fileName="logs/bankgateError.log" filePattern="logs/bankgateError.log.%d{yyyy-MM-dd}-%i.gz">
+			<ThresholdFilter level="ERROR" onMatch="ACCEPT"	onMismatch="DENY" />
+			<!-- %d{yyyy-MM-dd HH:mm:ss, SSS} : 日志生产时间 %p : 日志输出格式 %c : logger的名称 
+				%m : 日志内容，即 logger.info("message") %n : 换行符 %C : Java类名 %L : 日志输出所在行数 %M 
+				: 日志输出所在方法名 hostName : 本地机器名 hostAddress : 本地ip地址 -->
+			<PatternLayout>
+				<pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} |-%-5level [%thread] %c %L -| %hslog%n</pattern>
+			</PatternLayout>
+			<Policies>
+				<!--设置每天打包日志一次 -->
+				<TimeBasedTriggeringPolicy interval="1"  modulate="false" />
+				<!--设置日志文件满50MB后打包 -->
+				<SizeBasedTriggeringPolicy size="50 MB" />
+			</Policies>
+			<!-- 最多备份30天以内的日志，此处为策略限制，Delete中可以按自己需要用正则表达式编写 -->
+			<!-- DefaultRolloverStrategy字段中加入max=“30”经测试是配合SizeBasedTriggeringPolicy限制%i的存在数量，并没有发现是网上流传的是最多保存多少个文件的限制，也或许是我写的有问题 -->
+			<DefaultRolloverStrategy>
+				<Delete basePath="logs/" maxDepth="2">
+					<IfFileName glob="bankgateError.log.*.gz" />
+					<IfLastModified age="30d" />
+				</Delete>
+			</DefaultRolloverStrategy>
+		</RollingRandomAccessFile>
+
+		<!-- 这个会打印出所有的信息，每次大小超过size，则这size大小的日志会自动存入按年份-月份建立的文件夹下面并进行压缩，作为存档 -->
+		<RollingFile name="bankgateWeb" fileName="logs/bankgateWeb.log" filePattern="logs/$${date:yyyy-MM}/bankgateWeb-%d{yyyy-MM-dd}-%i.log.gz">
+			<ThresholdFilter level="INFO" onMatch="ACCEPT"	onMismatch="DENY" />
+			<PatternLayout	pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} |-%-5level [%thread] %class{36} %L %M -| %msg%xEx%n" />
+			<SizeBasedTriggeringPolicy size="250MB" />
+		</RollingFile>
+		
+		<Console name="console" target="SYSTEM_OUT">
+			<PatternLayout pattern="${consolePattern}" />
+		</Console>
+
+		<!-- <Kafka name="kafkaTraceLogger" topic="apm"> <PatternLayout pattern="%msg"/> 
+			<Property name="bootstrap.servers">192.168.48.199:9092</Property> </Kafka> 
+			<Async name="AsyncKafkaTraceLogger"> <AppenderRef ref="kafkaTraceLogger" 
+			/> </Async> -->
+
+		<!-- <Async name="rollingFile">
+			<AppenderRef ref="RollingFile" />
+		</Async> -->
+        <!-- <Biz name="Biz"><AppenderRef ref="AsyncRoll"/></Biz>
+        // Async标签在log4j2中，表示用异步appender输出，只需要将异步的appender用<Biz>标签包住，既可以解决在异步appender或者异步logger输出时全链路id丢失的问题
+		<Async name="AsyncRoll"> <AppenderRef ref="RollingFile"/> </Async> -->
+	</appenders>
+
+	<loggers>
+		<Logger name="com.hundsun.ufg" level="INFO" additivity="false">
+			<AppenderRef ref="bankgateWeb" />
+			<AppenderRef ref="bankgateError" />
+			<AppenderRef ref="console" />
+    	</Logger>
+		<Logger name="com.alibaba.dubbo.rpc.filter" level="INFO" additivity="false">
+			<AppenderRef ref="bankgateWeb" />
+			<AppenderRef ref="bankgateError" />
+			<AppenderRef ref="console" />
+    	</Logger>
+
+		<root level="INFO">
+			<AppenderRef ref="console" />
+			<!-- <AppenderRef ref="rollingFile" /> -->
+		</root>
+	</loggers>
+
+</configuration>
